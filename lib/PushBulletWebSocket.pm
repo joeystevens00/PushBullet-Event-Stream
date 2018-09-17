@@ -49,7 +49,7 @@ sub connect_websocket {
     });
     $tx->on(message => sub {
       my ($tx, $msg) = @_;
-      my $msg_content = decode_response($msg);
+      my $msg_content = $self->decode_response($msg);
       return unless ref $msg_content eq 'HASH';
       $self->events->message($msg_content);
     });
