@@ -29,20 +29,11 @@ sub push_message_tts {
 }
 
 my $api_key = $ENV{'PUSHBULLET_API_KEY'};
-my $pushbullet = PushBulletWebSocket->new(api_key=>$api_key);
+my $pushbullet = PushBulletWebSocket->new(api_key=>$api_key, debug=>1);
 
 $pushbullet->events->on(message => sub {
   my ($events, $message) = @_;
   push_message_tts($message);
-});
-$pushbullet->events->on(error => sub {
-  my ($events, $error) = @_;
-  warn "Error caught: $error";
-});
-$pushbullet->events->on(reconnect => sub {
-  my ($events, $tx, $code, $reason) = @_;
-  say "WebSocket closed with status $code.";
-  warn "Reconnecting websocket...";
 });
 
 $pushbullet->connect_websocket;
