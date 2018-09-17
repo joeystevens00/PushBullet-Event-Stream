@@ -17,8 +17,8 @@ use Data::Dumper;
 use Try::Tiny;
 use feature 'say';
 has 'api_key' => (is=>'rw', isa=>'Str', required=>1);
-has 'endpoint' => (is=>'rw', isa=>'Str', lazy=>1, default=> sub { "wss://stream.pushbullet.com/websocket/" . shift->api_key });
-has 'ua' => (is=>'rw', isa=>'Mojo::UserAgent', lazy=>1, default=>sub {
+has 'endpoint' => (is=>'ro', isa=>'Str', lazy=>1, default=> sub { "wss://stream.pushbullet.com/websocket/" . shift->api_key });
+has 'ua' => (is=>'ro', isa=>'Mojo::UserAgent', lazy=>1, default=>sub {
   $ENV{'MOJO_CLIENT_DEBUG'}=1 if shift->debug;
   my $ua = Mojo::UserAgent->new;
   $ua->inactivity_timeout(0);
@@ -26,7 +26,7 @@ has 'ua' => (is=>'rw', isa=>'Mojo::UserAgent', lazy=>1, default=>sub {
 });
 
 has 'debug' => (is=>'rw', isa=>'Bool', default=>sub {$ENV{'DEBUG_PUSHBULLET_WEBSOCKET'}});
-has 'events' => (is=>'rw', isa=>'PushBulletWebSocket::Events', default=>sub {PushBulletWebSocket::Events->new});
+has 'events' => (is=>'ro', isa=>'PushBulletWebSocket::Events', default=>sub {PushBulletWebSocket::Events->new});
 
 before 'connect_websocket' => sub {
   my $self = shift;
