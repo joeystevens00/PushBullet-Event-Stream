@@ -1,10 +1,13 @@
 use strict;
 use warnings;
 use FindBin;
+use PerlSpeak;
+
 use feature 'say';
 BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 
 use PushBulletWebSocket;
+my $perlspeak = PerlSpeak->new(tts_engine=>"festival");
 
 # push_message_tts(pushBulletMessage)
 # uses PerlSpeak to read text messages
