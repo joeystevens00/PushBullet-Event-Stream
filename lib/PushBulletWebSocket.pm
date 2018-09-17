@@ -68,13 +68,15 @@ sub connect_websocket {
     #say 'Subprotocol negotiation failed!' and return unless $tx->protocol;
     $tx->on(finish => sub {
       my ($tx, $code, $reason) = @_;
-      $self->events->reconnect($tx, $code, $reason) and return unless $tx->is_websocket;
-      $self->connect_websocket;
+      unless ($tx->is_websocket) {
+        $self->events->reconnect($tx, $code, $reason);
+        $self->connect_websocket;
+      }
     });
     $tx->on(message => sub {
       my ($tx, $msg) = @_;
       my $msg_content = $self->decode_response($msg);
-      return unless ref $msg_content eq 'HASH';
+      $self->events->error('Message isn\'t serialized correctly.') and return unless ref $msg_content eq 'HASH';
       $self->events->message($msg_content);
     });
   });
