@@ -1,17 +1,20 @@
 package PushBulletWebSocket::Events;
 use Mojo::Base 'Mojo::EventEmitter';
-
-sub message {  shift->emit(message => shift) } # given deseralized PushBullet Event
-sub error {  shift->emit(error => shift) } # given $errorString
-sub reconnect {  shift->emit(reconnect => shift) } # given same args as a Mojo::Transaction finish event : $tx, $code, $reason
-
+# message($deseralized_json)
+# given $events_class, deseralized PushBullet Event
+sub message {  shift->emit(message => shift) }
+# error($errorString)
+# given $events_class, $errorString
+sub error {  shift->emit(error => shift) }
+# reconnect($tx, $code, $reason)
+# given $events_class then same args as a Mojo::Transaction finish event : $events_class, $tx, $code, $reason
+sub reconnect {  shift->emit(reconnect => shift) }
 package PushBulletWebSocket;
 use Moose;
 use JSON;
 use Mojo::UserAgent;
 use Data::Dumper;
 use Try::Tiny;
-use Mojo::Log;
 
 has 'api_key' => (is=>'rw', isa=>'Str', required=>1);
 has 'endpoint' => (is=>'rw', isa=>'Str', lazy=>1, default=> sub { "wss://stream.pushbullet.com/websocket/" . shift->api_key });
@@ -20,10 +23,6 @@ has 'ua' => (is=>'rw', isa=>'Mojo::UserAgent', lazy=>1, default=>sub {
   my $ua = Mojo::UserAgent->new;
   $ua->inactivity_timeout(0);
   $ua;
-});
-
-has 'log' => (is=>'rw', isa=>'Mojo::Log', lazy=>1, default=>sub {
-  Mojo::Log->new(path => '/var/log/pushbulletwebsocket.log', level => shift->debug ? 'debug' : 'warn');
 });
 
 has 'debug' => (is=>'rw', isa=>'Bool', default=>sub {$ENV{'DEBUG_PUSHBULLET_WEBSOCKET'}});

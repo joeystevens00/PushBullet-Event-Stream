@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use PerlSpeak;
-
+use Data::Dumper;
 use feature 'say';
 BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 
@@ -32,15 +32,16 @@ my $api_key = $ENV{'PUSHBULLET_API_KEY'};
 my $pushbullet = PushBulletWebSocket->new(api_key=>$api_key);
 
 $pushbullet->events->on(message => sub {
-  my $message = shift;
+  my ($events, $message) = @_;
+  print Dumper $message;
   push_message_tts($message);
 });
 $pushbullet->events->on(error => sub {
-  my $error = shift;
+  my ($events, $error) = @_;
   warn "Error caught: $error";
 });
 $pushbullet->events->on(reconnect => sub {
-  my ($tx, $code, $reason) = @_;
+  my ($events, $tx, $code, $reason) = @_;
   say "WebSocket closed with status $code.";
   warn "Reconnecting websocket...";
 });
