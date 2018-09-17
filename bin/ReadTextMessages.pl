@@ -33,7 +33,6 @@ my $pushbullet = PushBulletWebSocket->new(api_key=>$api_key);
 
 $pushbullet->events->on(message => sub {
   my ($events, $message) = @_;
-  print Dumper $message;
   push_message_tts($message);
 });
 $pushbullet->events->on(error => sub {
