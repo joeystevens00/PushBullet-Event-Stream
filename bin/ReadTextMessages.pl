@@ -13,7 +13,7 @@ use PushBulletWebSocket;
 sub push_message_tts {
   my $message = shift;
   return unless ref $message->{push} eq 'HASH';
-  my $push_type = $msg_content->{push}->{type};
+  my $push_type = $message->{push}->{type};
   return 0 if $push_type ne 'sms_changed';
   my $hasNotification = 0;
   foreach my $notification (@{$message->{push}->{notifications}}) {
