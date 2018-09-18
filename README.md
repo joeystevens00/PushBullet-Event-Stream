@@ -8,7 +8,7 @@ $pushbullet->events->on(message => sub {
     my $push_notifications = $message->push_notifications;
     foreach my $notification(@$push_notifications) {
       my $title = $notification->{title}; # Title/Body will mean different things depending on the type of push notification
-      my $body = $notification->{title};
+      my $body = $notification->{body};
       say $title, ": ", $body;
     }
   }
