@@ -9,38 +9,65 @@ BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 use PushBulletWebSocket;
 my $perlspeak = PerlSpeak->new(tts_engine=>"festival");
 
-# valid_push_sms_msg($message)
-# validates $message is push event of type sms_changed
-# returns undef on invalid message
-# returns message on valid
-sub valid_push_sms_msg {
-  my $message = shift;
-  return unless ref $message->{push} eq 'HASH';
-  return unless $message->{push}->{type} eq 'sms_changed';
-  return $message;
-}
 
-# push_message_tts(pushBulletMessage)
-# uses PerlSpeak to read text messages
-# returns number of times perlspeak was called
-sub push_message_tts {
-  my $message = valid_push_sms_msg(shift);
+# notify_text_message($message->push_notifications->[$i])
+# args:
+# notification: Individual push notification
+# named_contacts_only: Bool (default true) : Don't read text messages from phone numbers/short codes (Note: Sender is contact preference name or phone number)
+# no_email_addresses: Bool (default true) : Don't read text messages from email addresses
+sub notify_text_message {
+  my $notification = shift;
   my $named_contacts_only = shift || 1; # Skip messages from non-contacts
   my $no_email_addresses = shift || 1; # Skip messages from email addresses
-
-  my $num_notifications = 0;
-  return $num_notifications unless $message;
-
   my $email_chars = qr/(\w|\.|-|_)/;
-  foreach my $notification (@{$message->{push}->{notifications}}) {
-    my $sender = $notification->{title};
-    next if $named_contacts_only && $sender =~ /^\d+$/;
-    next if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
-    $num_notifications++;
-    my $notification_msg = "Text Message From " . $sender . ", " . $notification->{body};
-    $perlspeak->say($notification_msg);
+  return 0 unless ref $notification eq 'HASH';
+
+  my $sender = $notification->{title};
+
+  return 0 if $named_contacts_only && $sender =~ /^\d+$/;
+  return 0 if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
+  my $notification_msg = "Text Message From " . $sender . ", " . $notification->{body};
+  $perlspeak->say($notification_msg);
+  return 1;
+}
+
+# notify_outlook_meeting($message->push)
+sub notify_outlook_meeting {
+  my $notification = shift;
+  my $meeting_time = $notification->{body};
+  my $meeting = $notification->{title};
+  # $time_til_meeting:
+  # '9:30 AM (in 10 minutes)'
+  # capture: in 10 minutes
+  # '9:30 AM (meeting has started)'
+  # capture: meeting has started
+  # 2:00 PM (meeting has ended)
+  # capture: meeting has ended
+  (my $time_til_meeting = $meeting_time) =~ s/(.*?)\((.*?)\)/$2/;
+  return unless $time_til_meeting =~ /10|started/; # Notify at 10 minutes and when meeting starts
+  my $notification_msg = "$meeting $time_til_meeting";
+  $perlspeak->say($notification_msg);
+}
+
+# parse_mirror_notifications($message)
+# Calls notification routines for mirror notifications  (i.e push type 'mirror')
+sub parse_mirror_notifications {
+  my $message = shift;
+  notify_outlook_meeting($message->push) if $message->push->{application_name} =~ /outlook/i;
+
+}
+
+# parse_push_notifications($message)
+# Calls notification routines for push notifications
+sub parse_push_notifications {
+  my $message = shift;
+  my $push_notifications = $message->push_notifications;
+  if($push_notifications) {
+    foreach my $notification (@$push_notifications) {
+      notify_text_message($notification) if $message->push_type eq 'sms_changed';
+    }
   }
-  return $num_notifications;
+  parse_mirror_notifications($message) if $message->push_type eq 'mirror';
 }
 
 my $api_key = $ENV{'PUSHBULLET_API_KEY'};
@@ -48,7 +75,7 @@ my $pushbullet = PushBulletWebSocket->new(api_key=>$api_key, debug=>1);
 
 $pushbullet->events->on(message => sub {
   my ($events, $message) = @_;
-  push_message_tts($message);
+  parse_push_notifications($message) if $message->type eq 'push';
 });
 
 $pushbullet->connect_websocket;

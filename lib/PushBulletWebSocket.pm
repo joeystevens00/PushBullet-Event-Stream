@@ -1,3 +1,37 @@
+package PushBulletWebSocket::Event::Message;
+use Moose;
+use Try::Tiny;
+has 'events' => (is=>'rw', isa=>'PushBulletWebSocket::Events', weak_ref=>1, required=>1);
+has 'body' => (is=>'rw', isa=>'HashRef', required=>1);
+has 'type' => (is=>'rw', isa=>'Maybe[Str]', lazy=>1, default=> sub {
+  my $self = shift;
+  $self->body->{type};
+});
+has 'push' => (is=>'rw', isa=>'Maybe[HashRef]', lazy=>1, default=> sub {
+  my $self = shift;
+  $self->body->{push};
+});
+has 'push_type' => (is=>'rw', isa=>'Maybe[Str]', lazy=>1, default=> sub {
+  my $self = shift;
+  $self->body->{push}->{type};
+});
+has 'push_notifications' => (is=>'rw', isa=>'Maybe[ArrayRef]', lazy=>1, default=> sub {
+  my $self = shift;
+  $self->body->{push}->{notifications};
+});
+
+around qw(type push push_type push_notifications) => sub { # GETing is always safe (fail is undef)
+  my $orig = shift;
+  my $self = shift;
+
+  return try { $self->$orig() } catch { $self->events->error("Unable to call $orig: $_") }
+      unless @_;
+
+  return $self->$orig(@_);
+};
+
+
+
 package PushBulletWebSocket::Events;
 use Mojo::Base 'Mojo::EventEmitter';
 # message($deseralized_json)
@@ -15,6 +49,7 @@ use JSON;
 use Mojo::UserAgent;
 use Data::Dumper;
 use Try::Tiny;
+use PushBulletWebSocket::Event::Message;
 use feature 'say';
 has 'api_key' => (is=>'rw', isa=>'Str', required=>1);
 has 'endpoint' => (is=>'ro', isa=>'Str', lazy=>1, default=> sub { "wss://stream.pushbullet.com/websocket/" . shift->api_key });
@@ -38,7 +73,7 @@ sub install_debug_event_handlers {
   $self->events->on(message => sub {
     my $events = shift;
     my $message = shift;
-    print Dumper $message;
+    print Dumper $message->body;
   });
   $self->events->on(reconnect => sub {
     my ($events, $tx, $code, $reason) = @_;
@@ -56,8 +91,9 @@ sub install_debug_event_handlers {
 sub decode_response {
   my $self = shift;
   my $json = shift;
-  try { decode_json $json }
-  catch {  $self->events->error("decode_json error: $_") };
+  my $d_json = try { decode_json($json)}
+    catch {  $self->events->error("decode_json error: $_") };
+  PushBulletWebSocket::Event::Message->new(body=>$d_json, events=>$self->events);
 }
 
 sub connect_websocket {
@@ -76,7 +112,7 @@ sub connect_websocket {
     $tx->on(message => sub {
       my ($tx, $msg) = @_;
       my $msg_content = $self->decode_response($msg);
-      $self->events->error('Message isn\'t serialized correctly.') and return unless ref $msg_content eq 'HASH';
+      $self->events->error('Message isn\'t serialized correctly.') and return unless ref $msg_content eq 'PushBulletWebSocket::Event::Message';
       $self->events->message($msg_content);
     });
   });
