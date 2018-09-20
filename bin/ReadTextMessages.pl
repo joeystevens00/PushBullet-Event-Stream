@@ -26,18 +26,21 @@ sub notify_text_message {
 
   return 0 if $named_contacts_only && $sender =~ /^\d+$/;
   return 0 if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
-  my $notification_msg = "Text Message From " . $sender . ", " . $notification->{body};
+  my $notification_msg = "Text Message From, " . $sender . ": " . $notification->{body};
   $perlspeak->say($notification_msg);
   return 1;
 }
 
 # notify_outlook_meeting($message->push)
+# uses Outlook's push notifications to do a PerlSpeak notification
+# Outlook's pushes fire in minute intervals
+# when a meeting is about to start, started, or has ended
 sub notify_outlook_meeting {
   my $notification = shift;
   my $meeting_time = $notification->{body};
   my $meeting = $notification->{title};
   # $time_til_meeting:
-  # '9:30 AM (in 10 minutes)'
+  # $meeting_time: '9:30 AM (in 10 minutes)'
   # capture: in 10 minutes
   # '9:30 AM (meeting has started)'
   # capture: meeting has started
@@ -45,7 +48,7 @@ sub notify_outlook_meeting {
   # capture: meeting has ended
   (my $time_til_meeting = $meeting_time) =~ s/(.*?)\((.*?)\)/$2/;
   return unless $time_til_meeting =~ /10|started/; # Notify at 10 minutes and when meeting starts
-  my $notification_msg = "$meeting $time_til_meeting";
+  my $notification_msg = "$meeting: $time_til_meeting";
   $perlspeak->say($notification_msg);
 }
 
