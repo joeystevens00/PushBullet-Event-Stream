@@ -44,7 +44,10 @@ sub error {  shift->emit(error => shift) }
 # given $events_class then same args as a Mojo::Transaction finish event : $events_class, $tx, $code, $reason
 sub reconnect {  shift->emit(reconnect => shift) }
 package PushBulletWebSocket;
-use utf8;
+use utf8; # Allow utf8 in source code
+use Encode;
+use feature 'unicode_strings';
+binmode(STDOUT, ":utf8"); # Allow printing UTF8 chars
 use Moose;
 use JSON;
 use Mojo::UserAgent;
@@ -92,8 +95,11 @@ sub install_debug_event_handlers {
 sub decode_response {
   my $self = shift;
   my $json = shift;
-  my $d_json = try { decode_json($json)}
-    catch {  $self->events->error("decode_json error: $_"); {} };
+
+  my $d_json = try {
+    decode_json(encode('utf-8', $json));
+  }
+  catch {  $self->events->error("decode_json error: $_"); {} };
   PushBulletWebSocket::Event::Message->new(body=>$d_json, events=>$self->events);
 }
 
