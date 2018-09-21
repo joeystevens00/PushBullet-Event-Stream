@@ -26,10 +26,6 @@ sub truncate_str {
   $str;
 }
 
-# format_tts_msg
-# default formatting for tts message
-sub format_tts_msg { truncate_str(shift, 80) }
-
 # notify_text_message($message->push_notifications->[$i])
 # args:
 # notification: Individual push notification
@@ -46,7 +42,7 @@ sub notify_text_message {
 
   return 0 if $named_contacts_only && $sender =~ /^\d+$/;
   return 0 if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
-  my $notification_msg = format_tts_msg("Text Message From, " . $sender . ": " . $notification->{body});
+  my $notification_msg = "Text Message From, " . $sender . ": " . truncate_str($notification->{body}, 80);
   $perlspeak->say($notification_msg);
   return 1;
 }
@@ -68,7 +64,7 @@ sub notify_outlook_meeting {
   # capture: meeting has ended
   (my $time_til_meeting = $meeting_time) =~ s/(.*?)\((.*?)\)/$2/;
   return unless $time_til_meeting =~ /10|started/; # Notify at 10 minutes and when meeting starts
-  my $notification_msg = format_tts_msg("$meeting: $time_til_meeting");
+  my $notification_msg = "$meeting: $time_til_meeting";
   $perlspeak->say($notification_msg);
 }
 
