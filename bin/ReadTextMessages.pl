@@ -4,11 +4,31 @@ use FindBin;
 use PerlSpeak;
 use Data::Dumper;
 use feature 'say';
+use Carp;
 BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 
 use PushBulletWebSocket;
 my $perlspeak = PerlSpeak->new(tts_engine=>"festival");
 
+# truncate_str($str, $len, $end_c)
+# Truncates string to length appending end_characters (defaults to elipsis)
+# End characters length is accounted for in truncating so returned string will be length not length+end_c
+# params:
+# $str : string to truncate
+# $len : length to truncate to
+# $end_c : end characters to append to string (default: ...)
+sub truncate_str {
+  my ($str, $len, $end_c) = (shift, shift, shift);
+  croak "Usage: truncate_str(string, length, end_char(default:'...'))" unless $str && $len;
+  $end_c = "..." unless $end_c; # Default: Elipsis
+  my $end_c_len = length $end_c;
+  $str = length $str < $len ? $str : substr($str, 0, ($len-$end_c_len)) . $end_c;
+  $str;
+}
+
+# format_tts_msg
+# default formatting for tts message
+sub format_tts_msg { truncate_str(shift, 80) }
 
 # notify_text_message($message->push_notifications->[$i])
 # args:
@@ -26,7 +46,7 @@ sub notify_text_message {
 
   return 0 if $named_contacts_only && $sender =~ /^\d+$/;
   return 0 if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
-  my $notification_msg = "Text Message From, " . $sender . ": " . $notification->{body};
+  my $notification_msg = format_tts_msg("Text Message From, " . $sender . ": " . $notification->{body});
   $perlspeak->say($notification_msg);
   return 1;
 }
@@ -48,7 +68,7 @@ sub notify_outlook_meeting {
   # capture: meeting has ended
   (my $time_til_meeting = $meeting_time) =~ s/(.*?)\((.*?)\)/$2/;
   return unless $time_til_meeting =~ /10|started/; # Notify at 10 minutes and when meeting starts
-  my $notification_msg = "$meeting: $time_til_meeting";
+  my $notification_msg = format_tts_msg("$meeting: $time_til_meeting");
   $perlspeak->say($notification_msg);
 }
 

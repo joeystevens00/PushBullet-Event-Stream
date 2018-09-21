@@ -24,7 +24,7 @@ around qw(type push push_type push_notifications) => sub { # GETing is always sa
   my $orig = shift;
   my $self = shift;
 
-  return try { $self->$orig() } catch { $self->events->error("Unable to call $orig: $_") }
+  return try { $self->$orig() } catch { $self->events->error("Unable to call $orig: $_"); undef }
       unless @_;
 
   return $self->$orig(@_);
@@ -111,10 +111,8 @@ sub connect_websocket {
     #say 'Subprotocol negotiation failed!' and return unless $tx->protocol;
     $tx->on(finish => sub {
       my ($tx, $code, $reason) = @_;
-      unless ($tx->is_websocket) {
-        $self->events->reconnect($tx, $code, $reason);
-        $self->connect_websocket;
-      }
+      $self->events->reconnect($tx, $code, $reason);
+      $self->connect_websocket;
     });
     $tx->on(message => sub {
       my ($tx, $msg) = @_;
