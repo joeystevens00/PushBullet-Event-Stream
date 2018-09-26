@@ -1,3 +1,22 @@
+package PushBulletWebSocket::Event::Message::Push;
+use Moose;
+use Try::Tiny;
+has 'push_content' => (is=>'rw', isa=>'HashRef', required=>1);
+
+foreach my $arrayOfhashes_attr (qw/actions notifications/) {
+  has $arrayOfhashes_attr => (is => 'rw', isa=>'Maybe[ArrayRef[HashRef]]', lazy=>1, default => sub {
+    my $self = shift;
+    try { $self->push_content->{$arrayOfhashes_attr} } catch {undef}
+  });
+}
+
+foreach my $str_attr (qw/title source_device_iden type application_name body icon package_name notification_id source_user_iden/) {
+  has $str_attr => (is => 'rw', isa=>'Maybe[Str]', lazy=>1, default => sub {
+    my $self = shift;
+    try { $self->push_content->{$str_attr} } catch {undef}
+  });
+}
+
 package PushBulletWebSocket::Event::Message;
 use Moose;
 use Try::Tiny;
@@ -7,20 +26,13 @@ has 'type' => (is=>'rw', isa=>'Maybe[Str]', lazy=>1, default=> sub {
   my $self = shift;
   $self->body->{type};
 });
-has 'push' => (is=>'rw', isa=>'Maybe[HashRef]', lazy=>1, default=> sub {
+has 'push' => (is=>'rw', isa=>'PushBulletWebSocket::Event::Message::Push', lazy=>1, default=> sub {
   my $self = shift;
-  $self->body->{push};
-});
-has 'push_type' => (is=>'rw', isa=>'Maybe[Str]', lazy=>1, default=> sub {
-  my $self = shift;
-  $self->body->{push}->{type};
-});
-has 'push_notifications' => (is=>'rw', isa=>'Maybe[ArrayRef]', lazy=>1, default=> sub {
-  my $self = shift;
-  $self->body->{push}->{notifications};
+  my $push_content = $self->body->{push} || {};
+  PushBulletWebSocket::Event::Message::Push->new(push_content=>$push_content);
 });
 
-around qw(type push push_type push_notifications) => sub { # GETing is always safe (fail is undef)
+around qw(type push) => sub { # GETing is always safe (fail is undef)
   my $orig = shift;
   my $self = shift;
 
