@@ -45,6 +45,8 @@ sub notify_text_message {
   my $notification = shift;
   my $named_contacts_only = shift || 1; # Skip messages from non-contacts
   my $no_email_addresses = shift || 1; # Skip messages from email addresses
+  my $no_urls = shift || 1; # Skip messages containing URLs
+
   my $email_chars = qr/(\w|\.|-|_)/;
   return 0 unless ref $notification eq 'HASH';
 
@@ -52,6 +54,7 @@ sub notify_text_message {
 
   return 0 if $named_contacts_only && $sender =~ /^\d+$/;
   return 0 if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
+  return 0 if $no_urls && $notification->{body} =~ /\w+:\/\/\w+\.\w+/; # like words://words.words
   my $notification_msg = "Text Message From, " . $sender . ": " . truncate_str($notification->{body}, 80);
   $perlspeak->say($notification_msg);
   return 1;
