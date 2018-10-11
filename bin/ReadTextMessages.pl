@@ -10,6 +10,8 @@ BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 use PushBulletWebSocket;
 my $perlspeak = PerlSpeak->new(tts_engine=>"festival");
 
+my $qr_url = qr/\w+:\/\/\w+\.\w+/;
+
 # truncate_str($str, $len, $end_c)
 # Truncates string to length appending end_characters (defaults to elipsis)
 # End characters length is accounted for in truncating so returned string will be length not length+end_c
@@ -54,7 +56,7 @@ sub notify_text_message {
 
   return 0 if $named_contacts_only && $sender =~ /^\d+$/;
   return 0 if $no_email_addresses && $sender =~ /^\w$email_chars+\w\@\w$email_chars+\w$/; # Close enough
-  return 0 if $no_urls && $notification->{body} =~ /\w+:\/\/\w+\.\w+/; # like words://words.words
+  return 0 if $no_urls && $notification->{body} =~ /$qr_url/; # like words://words.words
   my $notification_msg = "Text Message From, " . $sender . ": " . truncate_str($notification->{body}, 80);
   $perlspeak->say($notification_msg);
   return 1;
@@ -81,12 +83,41 @@ sub notify_outlook_meeting {
   $perlspeak->say($notification_msg);
 }
 
+
+sub notify_facebook_messenger_group {
+  my $push = shift;
+  my $topic = $push->title;
+  my ($sender, $msg) = split(/:/, $push->body, 2);
+  return unless $msg && $sender;
+  return if $msg =~ /$qr_url/; # No URL reading. Its annoying
+  my $notification_msg = "Facebook Message in group, $topic, from $sender: $msg";
+  $perlspeak->say($notification_msg);
+}
+
+sub notify_facebook_messenger_single {
+  my $push = shift;
+  my $sender = $push->title;
+  my $msg = $push->body;
+  return unless $msg && $sender;
+  return if $msg =~ /$qr_url/; # No URL reading. Its annoying
+  my $notification_msg = "Facebook Message from, $sender: $msg";
+  $perlspeak->say($notification_msg);
+}
+
+sub notify_facebook_messenger {
+  my $push = shift;
+  my $notification_tag = $push->notification_tag||"";
+  notify_facebook_messenger_group($push) if $notification_tag =~ /group/i;
+  notify_facebook_messenger_single($push) if $notification_tag =~ /one_to_one/i;
+}
+
 # parse_mirror_notifications($message)
 # Calls notification routines for mirror notifications  (i.e push type 'mirror')
 sub parse_mirror_notifications {
   my $message = shift;
   notify_outlook_meeting($message->push) if $message->push->application_name =~ /outlook/i;
   notify_phone_call($message->push) if $message->push->title =~ /incoming call/i;
+  notify_facebook_messenger($message->push) if $message->push->application_name =~ /messenger/i;
 }
 
 # parse_push_notifications($message)
@@ -111,3 +142,4 @@ $pushbullet->events->on(message => sub {
 });
 
 $pushbullet->connect_websocket;
+

@@ -10,7 +10,7 @@ foreach my $arrayOfhashes_attr (qw/actions notifications/) {
   });
 }
 
-foreach my $str_attr (qw/title source_device_iden type application_name body icon package_name notification_id source_user_iden/) {
+foreach my $str_attr (qw/title source_device_iden type application_name body icon package_name notification_id source_user_iden notification_tag/) {
   has $str_attr => (is => 'rw', isa=>'Maybe[Str]', lazy=>1, default => sub {
     my $self = shift;
     try { $self->push_content->{$str_attr} } catch {undef}
@@ -142,3 +142,4 @@ no Moose;
 __PACKAGE__->meta->make_immutable();
 
 1;
+
